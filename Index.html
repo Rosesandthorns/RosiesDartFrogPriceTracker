@@ -1,0 +1,804 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Paludarium Budget Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;1,400&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0d1a0f;
+    --bg2: #111f13;
+    --bg3: #162119;
+    --card: #192b1b;
+    --card2: #1e3320;
+    --border: #2a4a2d;
+    --border2: #3a6040;
+    --moss: #4a7c52;
+    --leaf: #6aab72;
+    --mint: #9dcfa1;
+    --pale: #c8e8c9;
+    --text: #dceedd;
+    --text2: #8fbc93;
+    --text3: #5a8a5e;
+    --accent: #7ed680;
+    --gold: #c8a96e;
+    --gold2: #e0c080;
+    --danger: #c06060;
+    --checked: #2d4a2f;
+    --bar-empty: #1a2e1c;
+    --bar-fill: linear-gradient(90deg, #3a6b3e, #5fa865, #7ed680);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* Animated background noise */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image: 
+      radial-gradient(ellipse at 20% 20%, rgba(74,124,82,0.08) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 80%, rgba(106,171,114,0.06) 0%, transparent 60%),
+      radial-gradient(ellipse at 50% 50%, rgba(13,26,15,0.4) 0%, transparent 80%);
+    pointer-events: none;
+    z-index: 0;
+  }
+
+  .container {
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 24px 80px;
+    position: relative;
+    z-index: 1;
+  }
+
+  /* Header */
+  .header {
+    text-align: center;
+    margin-bottom: 48px;
+    padding-bottom: 32px;
+    border-bottom: 1px solid var(--border);
+    position: relative;
+  }
+
+  .header::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 120px;
+    height: 2px;
+    background: var(--bar-fill);
+    border-radius: 2px;
+  }
+
+  .header-label {
+    font-size: 10px;
+    letter-spacing: 0.35em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 10px;
+  }
+
+  .header h1 {
+    font-family: 'Playfair Display', serif;
+    font-size: clamp(28px, 5vw, 44px);
+    font-weight: 400;
+    color: var(--pale);
+    line-height: 1.1;
+    margin-bottom: 6px;
+  }
+
+  .header h1 em {
+    font-style: italic;
+    color: var(--mint);
+  }
+
+  .header-sub {
+    font-size: 11px;
+    color: var(--text3);
+    letter-spacing: 0.1em;
+    margin-top: 8px;
+  }
+
+  /* Budget bar */
+  .budget-widget {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 28px 32px;
+    margin-bottom: 40px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .budget-widget::before {
+    content: '';
+    position: absolute;
+    top: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--bar-fill);
+  }
+
+  .budget-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-end;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+
+  .budget-label {
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 4px;
+  }
+
+  .budget-amount {
+    font-family: 'Playfair Display', serif;
+    font-size: 36px;
+    color: var(--accent);
+    line-height: 1;
+  }
+
+  .budget-amount span {
+    font-family: 'DM Mono', monospace;
+    font-size: 13px;
+    color: var(--text3);
+    margin-left: 4px;
+  }
+
+  .budget-stats {
+    display: flex;
+    gap: 28px;
+    flex-wrap: wrap;
+  }
+
+  .stat {
+    text-align: right;
+  }
+
+  .stat-label {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text3);
+    margin-bottom: 2px;
+  }
+
+  .stat-val {
+    font-family: 'Playfair Display', serif;
+    font-size: 20px;
+    color: var(--text);
+  }
+
+  .stat-val.spent { color: var(--gold2); }
+  .stat-val.left { color: var(--mint); }
+  .stat-val.items { color: var(--text2); }
+
+  .bar-track {
+    height: 10px;
+    background: var(--bar-empty);
+    border-radius: 999px;
+    overflow: hidden;
+    position: relative;
+  }
+
+  .bar-fill {
+    height: 100%;
+    background: var(--bar-fill);
+    border-radius: 999px;
+    transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+    min-width: 0;
+    position: relative;
+  }
+
+  .bar-fill::after {
+    content: '';
+    position: absolute;
+    right: 0; top: 0; bottom: 0;
+    width: 20px;
+    background: rgba(255,255,255,0.2);
+    border-radius: 999px;
+  }
+
+  .bar-pct {
+    font-size: 10px;
+    color: var(--text3);
+    margin-top: 6px;
+    text-align: right;
+    letter-spacing: 0.1em;
+  }
+
+  /* Budget input */
+  .budget-input-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+  }
+
+  .budget-input-row label {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--text3);
+    white-space: nowrap;
+  }
+
+  .budget-input-row input {
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text);
+    font-family: 'DM Mono', monospace;
+    font-size: 14px;
+    padding: 7px 12px;
+    width: 130px;
+    outline: none;
+    transition: border-color 0.2s;
+  }
+
+  .budget-input-row input:focus {
+    border-color: var(--leaf);
+  }
+
+  /* Section */
+  .section {
+    margin-bottom: 32px;
+  }
+
+  .section-header {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  .section-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    background: var(--card2);
+    border: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 15px;
+    flex-shrink: 0;
+    transition: background 0.2s;
+  }
+
+  .section-header:hover .section-icon {
+    background: var(--border2);
+  }
+
+  .section-title {
+    font-family: 'Playfair Display', serif;
+    font-size: 18px;
+    font-weight: 400;
+    color: var(--pale);
+    flex: 1;
+  }
+
+  .section-total {
+    font-size: 12px;
+    color: var(--text3);
+    letter-spacing: 0.1em;
+  }
+
+  .section-total.partial { color: var(--gold); }
+
+  .chevron {
+    font-size: 12px;
+    color: var(--text3);
+    transition: transform 0.25s;
+  }
+
+  .section.collapsed .chevron { transform: rotate(-90deg); }
+  .section.collapsed .items-list { display: none; }
+
+  .items-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  /* Item card */
+  .item {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 14px 16px;
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    transition: all 0.2s;
+    cursor: pointer;
+  }
+
+  .item:hover {
+    border-color: var(--border2);
+    background: var(--card2);
+  }
+
+  .item.checked {
+    background: var(--checked);
+    border-color: var(--moss);
+    opacity: 0.65;
+  }
+
+  .item.checked .item-name {
+    text-decoration: line-through;
+    color: var(--text3);
+  }
+
+  .item.checked .item-price {
+    text-decoration: line-through;
+    color: var(--text3);
+  }
+
+  .checkbox {
+    width: 20px;
+    height: 20px;
+    border-radius: 6px;
+    border: 1.5px solid var(--border2);
+    background: var(--bg3);
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.15s;
+    pointer-events: none;
+  }
+
+  .item.checked .checkbox {
+    background: var(--moss);
+    border-color: var(--leaf);
+  }
+
+  .checkbox-tick {
+    display: none;
+    color: var(--pale);
+    font-size: 11px;
+    font-weight: bold;
+  }
+
+  .item.checked .checkbox-tick { display: block; }
+
+  .item-body {
+    flex: 1;
+    min-width: 0;
+  }
+
+  .item-name {
+    font-size: 13px;
+    color: var(--text);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    line-height: 1.4;
+    transition: color 0.2s;
+  }
+
+  .item-qty {
+    font-size: 10px;
+    color: var(--text3);
+    letter-spacing: 0.1em;
+    margin-top: 2px;
+  }
+
+  .item-right {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    flex-shrink: 0;
+  }
+
+  .item-price {
+    font-family: 'Playfair Display', serif;
+    font-size: 16px;
+    color: var(--gold2);
+    white-space: nowrap;
+    transition: color 0.2s;
+  }
+
+  .item-price-tax {
+    font-size: 9px;
+    color: var(--text3);
+    text-align: right;
+    letter-spacing: 0.05em;
+    margin-top: 1px;
+  }
+
+  .link-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 30px;
+    height: 30px;
+    background: var(--bg3);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    color: var(--text3);
+    text-decoration: none;
+    font-size: 13px;
+    transition: all 0.15s;
+    flex-shrink: 0;
+  }
+
+  .link-btn:hover {
+    background: var(--border2);
+    color: var(--pale);
+    border-color: var(--leaf);
+  }
+
+  /* Section divider line */
+  .section + .section {
+    padding-top: 4px;
+  }
+
+  /* Summary footer */
+  .summary-footer {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 24px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 16px;
+    margin-top: 12px;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .summary-footer::after {
+    content: '';
+    position: absolute;
+    bottom: 0; left: 0; right: 0;
+    height: 2px;
+    background: var(--bar-fill);
+    opacity: 0.6;
+  }
+
+  .summary-line {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+  }
+
+  .summary-line-label {
+    font-size: 10px;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--text3);
+  }
+
+  .summary-line-val {
+    font-family: 'Playfair Display', serif;
+    font-size: 26px;
+    color: var(--pale);
+  }
+
+  .summary-line-val.total-final { color: var(--gold2); }
+  .summary-line-val.tax-val { color: var(--text2); font-size: 20px; }
+
+  /* Frog decoration */
+  .frog-deco {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    font-size: 32px;
+    opacity: 0.18;
+    pointer-events: none;
+    animation: breathe 4s ease-in-out infinite;
+  }
+
+  @keyframes breathe {
+    0%, 100% { transform: scale(1); opacity: 0.18; }
+    50% { transform: scale(1.08); opacity: 0.24; }
+  }
+
+  @media (max-width: 600px) {
+    .budget-top { flex-direction: column; align-items: flex-start; }
+    .budget-stats { gap: 16px; }
+    .stat { text-align: left; }
+    .item-qty { display: none; }
+    .summary-footer { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+
+<div class="frog-deco">🐸</div>
+
+<div class="container">
+
+  <div class="header">
+    <div class="header-label">🌿 Arctic Roses Build Log</div>
+    <h1>Paludarium <em>Budget</em></h1>
+    <div class="header-sub">Dart Frog Vivarium · 13% Tax Included</div>
+  </div>
+
+  <div class="budget-widget">
+    <div class="budget-input-row">
+      <label>Your Budget $</label>
+      <input type="number" id="budgetInput" value="700" min="0" step="10">
+    </div>
+    <div class="budget-top">
+      <div>
+        <div class="budget-label">Remaining Budget</div>
+        <div class="budget-amount" id="remaining">$0.00 <span>CAD</span></div>
+      </div>
+      <div class="budget-stats">
+        <div class="stat">
+          <div class="stat-label">Unchecked</div>
+          <div class="stat-val spent" id="statSpent">$0.00</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Checked Off</div>
+          <div class="stat-val left" id="statBought">$0.00</div>
+        </div>
+        <div class="stat">
+          <div class="stat-label">Items</div>
+          <div class="stat-val items" id="statItems">0 / 0</div>
+        </div>
+      </div>
+    </div>
+    <div class="bar-track">
+      <div class="bar-fill" id="barFill" style="width: 0%"></div>
+    </div>
+    <div class="bar-pct" id="barPct">0% of budget spent</div>
+  </div>
+
+  <div id="sectionsContainer"></div>
+
+  <div class="summary-footer">
+    <div class="summary-line">
+      <div class="summary-line-label">Subtotal (before tax)</div>
+      <div class="summary-line-val" id="footerSubtotal">$0.00</div>
+    </div>
+    <div class="summary-line">
+      <div class="summary-line-label">Tax (13% HST)</div>
+      <div class="summary-line-val tax-val" id="footerTax">+$0.00</div>
+    </div>
+    <div class="summary-line">
+      <div class="summary-line-label">Total w/ Tax</div>
+      <div class="summary-line-val total-final" id="footerTotal">$0.00</div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+const TAX = 0.13;
+
+const data = [
+  {
+    id: "drainage",
+    icon: "💧",
+    title: "Drainage Layer",
+    items: [
+      { name: "Egg Crate Panel (4×2 ft)", price: 20, url: "https://www.homedepot.ca/product/plaskolite-4-ft-x-2-ft-suspended-light-ceiling-panel/1000110881" },
+      { name: "PVC ½″ 90° Elbow", price: 0.70, url: "https://www.homedepot.ca/product/lesso-1-2-in-pvc-schedule-40-90-degree-elbow/1000166792" },
+      { name: "Terrarium Mesh", price: 33.50, url: "https://www.amazon.ca/Furatune-Substrate-Terrarium-Supplies-Bioactive/dp/B0FPCJMWRH" },
+    ]
+  },
+  {
+    id: "soil",
+    icon: "🪨",
+    title: "Soil Base",
+    items: [
+      { name: "Orchid Bark (8.5L)", price: 50, url: "https://www.amazon.ca/8-5-litres-Orchid-Bark-Development/dp/B0DQSWVZ6H" },
+      { name: "Sphagnum Moss (dried)", price: 12, url: "https://www.amazon.ca/Sphagnum-Perfect-Propagation-Maintain-Humidity/dp/B0BCL4M3QF" },
+      { name: "Horticultural Charcoal", price: 20, url: "https://www.amazon.ca/Horticultural-Charcoal-Premium-Amendment-Terrariums/dp/B0BC268VT4" },
+    ]
+  },
+  {
+    id: "walking",
+    icon: "🍂",
+    title: "Walking Layer",
+    items: [
+      { name: "Dry Oak Leaf Litter (×2)", price: 30, url: "https://www.amazon.ca/MAQIHAN-Dry-Oak-Leaf-Litter/dp/B0D22KB66Y", note: "2 packs" },
+      { name: "Sphagnum Moss (walking)", price: 12, url: "https://www.amazon.ca/Sphagnum-Perfect-Propagation-Maintain-Humidity/dp/B0BCL4M3QF" },
+    ]
+  },
+  {
+    id: "background",
+    icon: "🪵",
+    title: "Background",
+    items: [
+      { name: "Cork Bark Back Wall", price: 42.50, url: "https://www.amazon.ca/IMIKEYA-Natural-Background-Terrarium-Climbing/dp/B0G2LRVDKG" },
+      { name: "Tree Fern Panel", price: 35, url: "https://junglejewelexotics.com/tree-fern-panels/" },
+    ]
+  },
+  {
+    id: "hardscape",
+    icon: "🌲",
+    title: "Hardscaping",
+    items: [
+      { name: "Ghost Wood (×4)", price: 120, url: "https://www.northerngecko.net/products/newcal-ghostwood-12-15", note: "4 pieces" },
+      { name: "Cork Bark (planting)", price: 16, url: "https://www.walmart.ca/en/ip/4-Pcs-Reptile-Cork-Bark-Reptile-Enclosure-Background-Cork-Bark-Tank-Decor-Background-For-Gecko-Lizard-Frog-Bearded-Dragon/327LUJ2AMZFD" },
+      { name: "Natural Log Hide", price: 30, url: "https://www.amazon.ca/Natural-Pack-Galapagos-50705550-Eucalyptus/dp/B0BMRT42CM" },
+      { name: "Driftwood Roots", price: 14, url: "https://www.amazon.ca/Natural-Driftwood-Aquarium-Carefully-Selected/dp/B0DDPM4H15" },
+      { name: "Coco Hides (ground)", price: 20, url: "https://junglejewelexotics.com/coco-hut/" },
+    ]
+  },
+  {
+    id: "equipment",
+    icon: "⚙️",
+    title: "Equipment",
+    items: [
+      { name: "Under Tank Heater", price: 20, url: "https://www.amazon.com/BN-LINK-Heating-Electric-Waterproof-Reptiles/dp/B08C93ZGPJ" },
+      { name: "Thermostat", price: 30, url: "https://www.amazon.ca/gp/aw/d/B01I15S6OM" },
+      { name: "Grow Light Bar", price: 75, url: "https://www.amazon.ca/Power-Off-SEAOURA-Brightness-Adjustable-Freshwater/dp/B0DG5P6M7L" },
+      { name: "Auto Mister", price: 36, url: "https://www.amazon.ca/MYGIIKAKA-Automatic-Terrarium-Humidifiers-Chameleon/dp/B09Z2PX5FV" },
+    ]
+  },
+  {
+    id: "plants",
+    icon: "🌿",
+    title: "Plants",
+    items: [
+      { name: "Fittonia (White)", price: 9, url: "https://tailsandscales.ca/products/fittonia", note: "Low crawling" },
+      { name: "Ant Plant", price: 35, url: "https://tailsandscales.ca/products/ant-plant", note: "Low crawling" },
+      { name: "Mandarin Spider Plant", price: 13, url: "https://tailsandscales.ca/products/mandarin-spider-plant", note: "Low crawling" },
+      { name: "Pothos", price: 25, url: "https://mygreenscape.ca/collections/pothos-plants", note: "Low crawling" },
+      { name: "Live Sphagnum Moss", price: 20, url: "https://tailsandscales.ca/products/live-sphagnum-moss", note: "Mid wall" },
+      { name: "Polka Dot Plant", price: 8, url: "https://tailsandscales.ca/products/hypoestes-polka-dot-plant", note: "Mid wall" },
+      { name: "Pilea Glauca", price: 10, url: "https://mygreenscape.ca/products/pilea-glauca", note: "Front/top" },
+    ]
+  }
+];
+
+// State
+const checked = {};
+
+function withTax(price) { return price * (1 + TAX); }
+function fmt(n) { return `$${n.toFixed(2)}`; }
+
+function buildSections() {
+  const container = document.getElementById("sectionsContainer");
+  data.forEach(section => {
+    const sec = document.createElement("div");
+    sec.className = "section";
+    sec.dataset.id = section.id;
+
+    const subtotal = section.items.reduce((s,i) => s + i.price, 0);
+
+    sec.innerHTML = `
+      <div class="section-header" onclick="toggleSection('${section.id}')">
+        <div class="section-icon">${section.icon}</div>
+        <div class="section-title">${section.title}</div>
+        <div class="section-total" id="sec-total-${section.id}">${fmt(withTax(subtotal))} w/tax</div>
+        <div class="chevron">▾</div>
+      </div>
+      <div class="items-list" id="list-${section.id}">
+        ${section.items.map((item, idx) => buildItem(section.id, idx, item)).join('')}
+      </div>
+    `;
+    container.appendChild(sec);
+  });
+}
+
+function buildItem(secId, idx, item) {
+  const id = `${secId}_${idx}`;
+  const pretax = item.price;
+  const posttax = withTax(pretax);
+  return `
+    <div class="item" id="item-${id}" onclick="toggleItem('${id}')">
+      <div class="checkbox"><span class="checkbox-tick">✓</span></div>
+      <div class="item-body">
+        <div class="item-name">${item.name}</div>
+        ${item.note ? `<div class="item-qty">${item.note}</div>` : ''}
+      </div>
+      <div class="item-right">
+        <div>
+          <div class="item-price">${fmt(posttax)}</div>
+          <div class="item-price-tax">${fmt(pretax)} + tax</div>
+        </div>
+        <a class="link-btn" href="${item.url}" target="_blank" onclick="event.stopPropagation()" title="Open link">↗</a>
+      </div>
+    </div>
+  `;
+}
+
+function toggleSection(id) {
+  const sec = document.querySelector(`.section[data-id="${id}"]`);
+  sec.classList.toggle("collapsed");
+}
+
+function toggleItem(id) {
+  const el = document.getElementById(`item-${id}`);
+  checked[id] = !checked[id];
+  if (checked[id]) el.classList.add("checked");
+  else el.classList.remove("checked");
+  recalc();
+}
+
+function recalc() {
+  let totalSubtotal = 0;
+  let checkedSubtotal = 0;
+  let totalCount = 0;
+  let checkedCount = 0;
+
+  data.forEach(section => {
+    let secTotal = 0;
+    let secChecked = 0;
+    section.items.forEach((item, idx) => {
+      const id = `${section.id}_${idx}`;
+      totalSubtotal += item.price;
+      totalCount++;
+      if (checked[id]) {
+        checkedSubtotal += item.price;
+        checkedCount++;
+        secChecked += item.price;
+      }
+      secTotal += item.price;
+    });
+
+    // Update section total color
+    const secTotalEl = document.getElementById(`sec-total-${section.id}`);
+    if (secChecked > 0 && secChecked < secTotal) {
+      secTotalEl.className = "section-total partial";
+    } else if (secChecked >= secTotal) {
+      secTotalEl.className = "section-total";
+      secTotalEl.style.opacity = "0.4";
+    } else {
+      secTotalEl.className = "section-total";
+      secTotalEl.style.opacity = "";
+    }
+  });
+
+  const budget = parseFloat(document.getElementById("budgetInput").value) || 0;
+  const uncheckedSubtotal = totalSubtotal - checkedSubtotal;
+  const uncheckedTotal = withTax(uncheckedSubtotal);
+  const checkedTotal = withTax(checkedSubtotal);
+  const fullTotal = withTax(totalSubtotal);
+  const remaining = budget - uncheckedTotal;
+
+  // Remaining
+  const remEl = document.getElementById("remaining");
+  remEl.innerHTML = `${fmt(remaining)} <span>CAD</span>`;
+  remEl.style.color = remaining < 0 ? "var(--danger)" : "var(--accent)";
+
+  document.getElementById("statSpent").textContent = fmt(uncheckedTotal);
+  document.getElementById("statBought").textContent = fmt(checkedTotal);
+  document.getElementById("statItems").textContent = `${checkedCount} / ${totalCount}`;
+
+  // Bar: percentage of budget consumed by unchecked items
+  const pct = budget > 0 ? Math.min((uncheckedTotal / budget) * 100, 100) : 0;
+  document.getElementById("barFill").style.width = pct + "%";
+  document.getElementById("barPct").textContent = `${pct.toFixed(1)}% of budget needed`;
+
+  // Footer
+  document.getElementById("footerSubtotal").textContent = fmt(totalSubtotal);
+  document.getElementById("footerTax").textContent = `+${fmt(totalSubtotal * TAX)}`;
+  document.getElementById("footerTotal").textContent = fmt(fullTotal);
+}
+
+buildSections();
+recalc();
+
+document.getElementById("budgetInput").addEventListener("input", recalc);
+</script>
+</body>
+</html>
