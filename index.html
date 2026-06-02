@@ -590,6 +590,7 @@
 
 <script>
 const TAX = 0.13;
+const LS_KEY = "paludarium_state";
 
 const data = [
   {
@@ -669,17 +670,37 @@ const data = [
   }
 ];
 
-// State
-const checked = {};
+// --- Persistence ---
+function loadState() {
+  try {
+    const raw = localStorage.getItem(LS_KEY);
+    return raw ? JSON.parse(raw) : { checked: {}, collapsed: {}, budget: 700 };
+  } catch { return { checked: {}, collapsed: {}, budget: 700 }; }
+}
 
+function saveState() {
+  try {
+    localStorage.setItem(LS_KEY, JSON.stringify({
+      checked: state.checked,
+      collapsed: state.collapsed,
+      budget: parseFloat(document.getElementById("budgetInput").value) || 700
+    }));
+  } catch {}
+}
+
+const state = loadState();
+const checked = state.checked;
+
+// --- Helpers ---
 function withTax(price) { return price * (1 + TAX); }
 function fmt(n) { return `$${n.toFixed(2)}`; }
 
+// --- Build DOM ---
 function buildSections() {
   const container = document.getElementById("sectionsContainer");
   data.forEach(section => {
     const sec = document.createElement("div");
-    sec.className = "section";
+    sec.className = "section" + (state.collapsed[section.id] ? " collapsed" : "");
     sec.dataset.id = section.id;
 
     const subtotal = section.items.reduce((s,i) => s + i.price, 0);
@@ -703,8 +724,9 @@ function buildItem(secId, idx, item) {
   const id = `${secId}_${idx}`;
   const pretax = item.price;
   const posttax = withTax(pretax);
+  const isChecked = !!checked[id];
   return `
-    <div class="item" id="item-${id}" onclick="toggleItem('${id}')">
+    <div class="item${isChecked ? ' checked' : ''}" id="item-${id}" onclick="toggleItem('${id}')">
       <div class="checkbox"><span class="checkbox-tick">✓</span></div>
       <div class="item-body">
         <div class="item-name">${item.name}</div>
@@ -721,9 +743,12 @@ function buildItem(secId, idx, item) {
   `;
 }
 
+// --- Interactions ---
 function toggleSection(id) {
   const sec = document.querySelector(`.section[data-id="${id}"]`);
   sec.classList.toggle("collapsed");
+  state.collapsed[id] = sec.classList.contains("collapsed");
+  saveState();
 }
 
 function toggleItem(id) {
@@ -732,8 +757,10 @@ function toggleItem(id) {
   if (checked[id]) el.classList.add("checked");
   else el.classList.remove("checked");
   recalc();
+  saveState();
 }
 
+// --- Recalc ---
 function recalc() {
   let totalSubtotal = 0;
   let checkedSubtotal = 0;
@@ -755,10 +782,10 @@ function recalc() {
       secTotal += item.price;
     });
 
-    // Update section total color
     const secTotalEl = document.getElementById(`sec-total-${section.id}`);
     if (secChecked > 0 && secChecked < secTotal) {
       secTotalEl.className = "section-total partial";
+      secTotalEl.style.opacity = "";
     } else if (secChecked >= secTotal) {
       secTotalEl.className = "section-total";
       secTotalEl.style.opacity = "0.4";
@@ -775,7 +802,6 @@ function recalc() {
   const fullTotal = withTax(totalSubtotal);
   const remaining = budget - uncheckedTotal;
 
-  // Remaining
   const remEl = document.getElementById("remaining");
   remEl.innerHTML = `${fmt(remaining)} <span>CAD</span>`;
   remEl.style.color = remaining < 0 ? "var(--danger)" : "var(--accent)";
@@ -784,21 +810,21 @@ function recalc() {
   document.getElementById("statBought").textContent = fmt(checkedTotal);
   document.getElementById("statItems").textContent = `${checkedCount} / ${totalCount}`;
 
-  // Bar: percentage of budget consumed by unchecked items
   const pct = budget > 0 ? Math.min((uncheckedTotal / budget) * 100, 100) : 0;
   document.getElementById("barFill").style.width = pct + "%";
   document.getElementById("barPct").textContent = `${pct.toFixed(1)}% of budget needed`;
 
-  // Footer
   document.getElementById("footerSubtotal").textContent = fmt(totalSubtotal);
   document.getElementById("footerTax").textContent = `+${fmt(totalSubtotal * TAX)}`;
   document.getElementById("footerTotal").textContent = fmt(fullTotal);
 }
 
+// --- Init ---
+document.getElementById("budgetInput").value = state.budget;
 buildSections();
 recalc();
 
-document.getElementById("budgetInput").addEventListener("input", recalc);
+document.getElementById("budgetInput").addEventListener("input", () => { recalc(); saveState(); });
 </script>
 </body>
 </html>
